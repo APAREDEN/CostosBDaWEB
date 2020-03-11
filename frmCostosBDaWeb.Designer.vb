@@ -29,6 +29,7 @@ Partial Class frmCostosBDaWeb
         Me.btnProcesa = New System.Windows.Forms.Button()
         Me.lblFechaEnvio = New System.Windows.Forms.Label()
         Me.Label3 = New System.Windows.Forms.Label()
+        Me.lbLogErrores = New System.Windows.Forms.ListBox()
         Me.SuspendLayout()
         '
         'Label6
@@ -94,11 +95,20 @@ Partial Class frmCostosBDaWeb
         Me.Label3.TabIndex = 19
         Me.Label3.Text = "Fecha de envío"
         '
+        'lbLogErrores
+        '
+        Me.lbLogErrores.FormattingEnabled = True
+        Me.lbLogErrores.Location = New System.Drawing.Point(467, 18)
+        Me.lbLogErrores.Name = "lbLogErrores"
+        Me.lbLogErrores.Size = New System.Drawing.Size(607, 95)
+        Me.lbLogErrores.TabIndex = 21
+        '
         'frmCostosBDaWeb
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(800, 286)
+        Me.ClientSize = New System.Drawing.Size(1086, 286)
+        Me.Controls.Add(Me.lbLogErrores)
         Me.Controls.Add(Me.lblFechaEnvio)
         Me.Controls.Add(Me.Label3)
         Me.Controls.Add(Me.btnProcesa)
@@ -120,4 +130,5 @@ Partial Class frmCostosBDaWeb
     Friend WithEvents btnProcesa As Button
     Friend WithEvents lblFechaEnvio As Label
     Friend WithEvents Label3 As Label
+    Friend WithEvents lbLogErrores As ListBox
 End Class
