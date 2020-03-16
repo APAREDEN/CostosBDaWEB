@@ -77,7 +77,9 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EntityDatoTransaccion.vb" />
+    <Compile Include="Dao\DB.vb" />
+    <Compile Include="Entity\DatoTransaccion.vb" />
+    <Compile Include="Entity\TablaComun.vb" />
     <Compile Include="frmCostosBDaWeb.vb">
       <SubType>Form</SubType>
     </Compile>
@@ -124,6 +126,9 @@
     </None>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Images\Bandera.gif" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

@@ -1,4 +1,4 @@
-﻿Public Class EntityDatoTransaccion
+﻿Public Class DatoTransaccion
     Public Property NombreArchivoZip As String = ""
     Public Property EmailSender As String = ""
 
