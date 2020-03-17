@@ -9,14 +9,34 @@ Imports SharpCompress.Common
 Imports SharpCompress.Readers
 Imports MailBee.Pop3Mail
 Imports System.Data.SqlClient
+Imports MailBee.SmtpMail
 
 Public Class frmCostosBDaWeb
     Const DirData As String = "C:\Portable"
+    Dim TemplatelistaTablas As New List(Of TablaComun)
     Dim listaTablas As New List(Of TablaComun)
+    Dim Pasos() As String = {
+        "Chequea ultimo correo recibido",
+        "Consistencia ultimo correo recibido vs ultimo correo procesado",
+        "Descomprime Backup",
+        "Restaura Backup a SqlServer costosbd",
+        "actualiza Informacion de Tablas comunes a la Web",
+        "Respondiendo mail con resultado del proceso"
+    }
     Private Sub frmCostosBDaWeb_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         'Principal()
     End Sub
     Private Sub Principal()
+        Me.Cursor = System.Windows.Forms.Cursors.WaitCursor
+        pnPaseAweb.Visible = True
+        lblMsg1.Visible = False
+        lblMsg2.Visible = False
+        lblMsg3.Visible = False
+        lblMsg4.Visible = False
+        lblMsg5.Visible = False
+        lblMsg6.Visible = False
+        lblMsg7.Visible = False
+        Application.DoEvents()
         '---------------------------------------------------------------
         '0  Borrar todo del directorio c:\portable (si no existe directorio crearlo)
         '---------------------------------------------------------------
@@ -30,7 +50,7 @@ Public Class frmCostosBDaWeb
         '    File.Delete(deleteFile)
         'Next
 
-
+        Dim terminaOk As Boolean = True
 
 
         Try
@@ -39,21 +59,35 @@ Public Class frmCostosBDaWeb
             IniciaDatos()
 
             '---------------------------------------------------------------
+            '0.1  Lee del Log el ultimo correo procesado
+            '---------------------------------------------------------------
+            Dim UltimaBase As DatoTransaccion = LeeLog()
+            lblUltimoNombreArchivoZip.Text = UltimaBase.NombreArchivoZip
+            lblUltimoSender.Text = UltimaBase.EmailSender
+            lblUltimaFechaEnvio.Text = UltimaBase.FechaEnvio
+            Application.DoEvents()
+
+            '---------------------------------------------------------------
             '1  Lee Ultimo COrreo y baja el backup
             '---------------------------------------------------------------
+            lblMsg1.Visible = True : Application.DoEvents()
             Dim elemento = LeeUltimoCorreo()
 
             If elemento.EmailSender = "ERROR" Then
                 lbLogErrores.Items.Add(elemento.NombreArchivoZip)
+                terminaOk = False
             Else
                 Dim fic As String = DirData & "\Data.dat"
-                Dim UltimaBase As DatoTransaccion = LeeLog()
+
                 If UltimaBase.EmailSender = "ERROR" Then
                     lbLogErrores.Items.Add(UltimaBase.NombreArchivoZip)
+                    terminaOk = False
                 Else
                     lblNombreArchivoZip.Text = elemento.NombreArchivoZip
                     lblSender.Text = elemento.EmailSender
                     lblFechaEnvio.Text = elemento.FechaEnvio
+                    Application.DoEvents()
+                    lblMsg2.Visible = True : Application.DoEvents()
                     Dim Pase As Boolean = False
                     If lblNombreArchivoZip.Text <> UltimaBase.NombreArchivoZip Then
                         Pase = True
@@ -62,6 +96,7 @@ Public Class frmCostosBDaWeb
                     End If
 
                     If Pase Then
+                        lblMsg3.Visible = True : Application.DoEvents()
                         Dim sw As New System.IO.StreamWriter(fic, False, System.Text.Encoding.Default)
                         Dim sb As New StringBuilder
 
@@ -72,27 +107,51 @@ Public Class frmCostosBDaWeb
                         sw.WriteLine(texto)
                         sw.Close()
                         ' Descompacta Archivo en directorio definido en la variable DirData
+
                         Dim mensajeRAR As String = CopiaArchivo(lblNombreArchivoZip.Text)
-                        If mensajeRAR = "" Then
-                        Else
+                        If mensajeRAR <> "" Then
+                            terminaOk = False
                             lbLogErrores.Items.Add(mensajeRAR)
-                            IniciaDatos()
+                            'IniciaDatos()
+                        Else
+                            ' Restaura Backup
+                            lblMsg4.Visible = True : Application.DoEvents()
+                            Dim Restore As String = RestauraBackup(Replace(UCase(lblNombreArchivoZip.Text), ".ARJ", ""))
+                            If Restore <> "" Then
+                                terminaOk = False
+                                lbLogErrores.Items.Add(Restore)
+                                IniciaDatos()
+                            Else                            ' Actualiza tablas comunes en la WEB
+                                CargaBlanco()
+                                lblMsg5.Visible = True : Application.DoEvents()
+                                Dim ActWeb As String = ActualizarWeb(Mid(lblNombreArchivoZip.Text, 10, 8))
+                                If ActWeb <> "" Then
+                                    lbLogErrores.Items.Add(ActWeb)
+                                    IniciaDatos()
+                                    terminaOk = False
+                                Else
+                                    ' Borra Base de Datos de folder portable'
+                                    lblMsg6.Visible = True : Application.DoEvents()
+                                    Dim rrpp = BorraArchivo(lblNombreArchivoZip.Text)
+                                    ' Envia correo con Status '
+                                    lblMsg7.Visible = True : Application.DoEvents()
+                                    Dim msg As String = ""
+                                    If terminaOk Then
+                                        msg = "Actualización de " & Replace(UCase(lblNombreArchivoZip.Text), ".ARJ", "") & " fue realizada con exito"
+                                    Else
+                                        msg = "Actualización de " & Replace(UCase(lblNombreArchivoZip.Text), ".ARJ", "") & " no fue realizada correctamente."
+                                    End If
+                                    EnviaRespuesta(lblSender.Text, msg)
+                                End If
+                            End If
+
                         End If
-                        ' Restaura Backup
-                        Dim Restore As String = RestauraBackup(Replace(UCase(lblNombreArchivoZip.Text), ".ARJ", ""))
-                        If Restore <> "" Then
-                            lbLogErrores.Items.Add(Restore)
-                            IniciaDatos()
-                        End If
-                        ' Actualiza tablas comunes en la WEB
-                        CargaBlanco()
-                        Dim ActWeb As String = ActualizarWeb(Mid(lblNombreArchivoZip.Text, 10, 8))
-                        If ActWeb <> "" Then
-                            lbLogErrores.Items.Add(ActWeb)
-                            IniciaDatos()
-                        End If
+                    Else
+                        terminaOk = False
                     End If
                 End If
+                pnPaseAweb.Visible = False
+                Application.DoEvents()
             End If
 
         Catch ex As Exception
@@ -101,6 +160,7 @@ Public Class frmCostosBDaWeb
 
         End Try
         pbProcesando.Visible = False
+        Me.Cursor = System.Windows.Forms.Cursors.Default
         Application.DoEvents()
     End Sub
     Private Function RestauraBackup(pArchivo As String) As String
@@ -156,8 +216,8 @@ Public Class frmCostosBDaWeb
                     elemento.FechaEnvio = msg.DateReceived
                     elemento.NombreArchivoZip = msg.Subject
                 End If
-                Debug.WriteLine("From: " & msg.From.AsString & ", To: " & msg.To.AsString)
-                Debug.WriteLine("Subject: " & msg.Subject)
+                'Debug.WriteLine("From: " & msg.From.AsString & ", To: " & msg.To.AsString)
+                'Debug.WriteLine("Subject: " & msg.Subject)
             Next
 
             ' Disconnect from POP3 server
@@ -168,6 +228,25 @@ Public Class frmCostosBDaWeb
             elemento.EmailSender = "ERROR"
             elemento.NombreArchivoZip = ex.Message
             Return elemento
+        End Try
+
+    End Function
+    Private Function EnviaRespuesta(Destino As String, msg As String) As Boolean
+
+        Try
+
+            MailBee.Global.LicenseKey = "MN110-1C20DF387EA9952F661A118648FA-468F"
+            Dim mailer As Smtp = New Smtp()
+            mailer.SmtpServers.Add("mail.costosaplicaciones.com", "receiver@costosaplicaciones.com", "costos2018#1")
+            mailer.From.AsString = "receiver@costosaplicaciones.com"
+            mailer.To.AsString = Destino
+            mailer.Subject = "Requerimiento de actualizacion de costosbd"
+            mailer.BodyPlainText = msg
+            mailer.Send()
+
+            Return True
+        Catch ex As Exception
+            Return False
         End Try
 
     End Function
@@ -205,10 +284,22 @@ Public Class frmCostosBDaWeb
     End Function
     Private Function CopiaArchivo(NombreRar As String) As String
         Try
-            Dim archivo = RarArchive.Open("C:\Users\APN\Google Drive\DATOS\WEB DB\BK_COSTOSDB\" & Replace(UCase(NombreRar), ".RAR", "") & ".rar")
+            Dim archivo = RarArchive.Open("C:\Users\APN\Google Drive\DATOS\WEB DB\BK_COSTOSDB\" & Replace(UCase(NombreRar), ".RAR", "") & ".RAR")
             For Each entry In archivo.Entries
                 entry.WriteToDirectory(DirData)
             Next
+            Return ""
+        Catch ex As Exception
+            Return ex.Message
+            MessageBox.Show(ex.Message)
+        End Try
+    End Function
+    Private Function BorraArchivo(NombreRar As String) As String
+        Try
+            Dim archivo = DirData & "\" & Replace(UCase(NombreRar), ".RAR", "")
+            If System.IO.File.Exists(archivo) = True Then
+                System.IO.File.Delete(archivo)
+            End If
             Return ""
         Catch ex As Exception
             Return ex.Message
@@ -230,7 +321,12 @@ Public Class frmCostosBDaWeb
         lblNombreArchivoZip.Text = ""
         lblSender.Text = ""
         lblFechaEnvio.Text = ""
-
+        lblUltimoNombreArchivoZip.Text = ""
+        lblUltimoSender.Text = ""
+        lblUltimaFechaEnvio.Text = ""
+        DataGridView1.DataSource = TemplatelistaTablas
+        DataGridView1.Refresh()
+        Application.DoEvents()
     End Sub
 
     Private Sub btnProcesa_Click(sender As Object, e As EventArgs) Handles btnProcesa.Click
@@ -319,14 +415,21 @@ Public Class frmCostosBDaWeb
                 x.ActCostos = x.InsertCostos + x.UpdateCostos
             Next
 
-
-
-
             DataGridView1.DataSource = listaTablas
             DataGridView1.Refresh()
             Application.DoEvents()
 
+            ' Comprobacion de resultados
+            Dim Epase As String = "Error Comprobacion"
+            For Each x In listaTablas
+                If (x.Actupd_Actualizacion <> x.ActACTcomun) Or (x.Actupd_Actualizacion <> x.ActCostos) Or (x.ActACTcomun <> x.ActCostos) Then
+                    Epase = Epase + x.NomTabla & "  " & x.Actupd_Actualizacion & "/" & x.ActACTcomun & "/" & x.ActCostos
+                    Return Epase
+                End If
+            Next
 
+            pnPaseAweb.Visible = False
+            Application.DoEvents()
         Catch ex As Exception
             Return ex.Message
         End Try
