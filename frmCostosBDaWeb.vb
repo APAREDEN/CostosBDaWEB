@@ -13,6 +13,7 @@ Imports MailBee.SmtpMail
 
 Public Class frmCostosBDaWeb
     Const DirData As String = "C:\Portable"
+    Dim fic As String = DirData & "\Data.dat"
     Dim TemplatelistaTablas As New List(Of TablaComun)
     Dim listaTablas As New List(Of TablaComun)
     Dim Pasos() As String = {
@@ -28,6 +29,7 @@ Public Class frmCostosBDaWeb
     End Sub
     Private Sub Principal()
         Me.Cursor = System.Windows.Forms.Cursors.WaitCursor
+
         pnPaseAweb.Visible = True
         lblMsg1.Visible = False
         lblMsg2.Visible = False
@@ -77,7 +79,7 @@ Public Class frmCostosBDaWeb
                 lbLogErrores.Items.Add(elemento.NombreArchivoZip)
                 terminaOk = False
             Else
-                Dim fic As String = DirData & "\Data.dat"
+
 
                 If UltimaBase.EmailSender = "ERROR" Then
                     lbLogErrores.Items.Add(UltimaBase.NombreArchivoZip)
@@ -97,15 +99,9 @@ Public Class frmCostosBDaWeb
 
                     If Pase Then
                         lblMsg3.Visible = True : Application.DoEvents()
-                        Dim sw As New System.IO.StreamWriter(fic, False, System.Text.Encoding.Default)
-                        Dim sb As New StringBuilder
 
-                        elemento.NombreArchivoZip = lblNombreArchivoZip.Text
-                        elemento.EmailSender = lblSender.Text
-                        elemento.FechaEnvio = lblFechaEnvio.Text
-                        Dim texto As String = ArmastringBuilder(elemento)
-                        sw.WriteLine(texto)
-                        sw.Close()
+
+
                         ' Descompacta Archivo en directorio definido en la variable DirData
 
                         Dim mensajeRAR As String = CopiaArchivo(lblNombreArchivoZip.Text)
@@ -150,18 +146,29 @@ Public Class frmCostosBDaWeb
                         terminaOk = False
                     End If
                 End If
+
                 pnPaseAweb.Visible = False
                 Application.DoEvents()
             End If
+            ' Copia Log
+            Dim sw As New System.IO.StreamWriter(fic, False, System.Text.Encoding.Default)
+            Dim sb As New StringBuilder
 
+            elemento.NombreArchivoZip = lblNombreArchivoZip.Text
+            elemento.EmailSender = lblSender.Text
+            elemento.FechaEnvio = lblFechaEnvio.Text
+            Dim texto As String = ArmastringBuilder(elemento)
+            sw.WriteLine(texto)
+            sw.Close()
+            pbProcesando.Visible = False
+            Me.Cursor = System.Windows.Forms.Cursors.Default
+            Application.DoEvents()
         Catch ex As Exception
             lbLogErrores.Items.Add(ex.Message)
             IniciaDatos()
 
         End Try
-        pbProcesando.Visible = False
-        Me.Cursor = System.Windows.Forms.Cursors.Default
-        Application.DoEvents()
+
     End Sub
     Private Function RestauraBackup(pArchivo As String) As String
         Dim Rpta As String = ""
@@ -340,12 +347,12 @@ Public Class frmCostosBDaWeb
         Dim rptProceso As String = ""
         Try
             ' Maneja Fechas
-            Dim Faux As Date = DateAdd("d", -15, Now.Date)
-            Dim FechaAct As Date = DateAdd("d", -10, CDate(Mid(sFecha, 1, 4) + "-" + Mid(sFecha, 5, 2) + "-" + Mid(sFecha, 7, 2)))
-            Dim dife As Integer = DateDiff(DateInterval.Day, Faux, FechaAct)
-            If Math.Abs(dife) > 10 Then
+            Dim Faux = DB.GetFechaUltmActCostosBD
+            Dim FechaAct As Date = DateAdd("d", -15, CDate(Mid(sFecha, 1, 4) + "-" + Mid(sFecha, 5, 2) + "-" + Mid(sFecha, 7, 2)))
+            If IsDate(Faux) Then
                 FechaAct = Faux
             End If
+
             dtFechaAct.Value = FechaAct
             Application.DoEvents()
 

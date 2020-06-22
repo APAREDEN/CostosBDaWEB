@@ -80,4 +80,33 @@ Public Class DB
         End Try
         Return ""
     End Function
+    Public Shared Function GetFechaUltmActCostosBD() As DateTime
+
+
+        Dim connection As SqlConnection = GetConnection()
+
+        Dim selectStatement As String = "SELECT max(ActualizacionFecha - 5) as FechaActualizacion FROM costosbd.dbo.Identificador"
+
+        Dim selectCommand As New SqlCommand(selectStatement, connection)
+        selectCommand.CommandType = CommandType.Text
+        Dim Rpt As DateTime
+        Try
+            connection.Open()
+            Dim reader As SqlDataReader = selectCommand.ExecuteReader()
+
+            reader.Read()
+
+            Rpt = System.Convert.ToDateTime(reader("FechaActualizacion"))
+
+            reader.Close()
+        Catch ex As SqlException
+            If connection.State = ConnectionState.Open Then connection.Close()
+            Throw ex
+            Return Nothing
+        Finally
+            connection.Close()
+
+        End Try
+        Return rpt
+    End Function
 End Class
